@@ -1,13 +1,1440 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>SVG Viewer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Lunatica Impressões</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        .sidebar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+        }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-pendente { background-color: #fee2e2; color: #b91c1c; }
+        .status-pago { background-color: #dcfce7; color: #166534; }
+        .status-impresso { background-color: #dbeafe; color: #1e40af; }
+        .status-pintado { background-color: #ede9fe; color: #6d28d9; }
+        .status-entregue { background-color: #ecfdf5; color: #047857; }
+        .status-concluido { background-color: #f0fdfa; color: #0d9488; }
+        .order-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .product-thumbnail {
+            height: 100px;
+            width: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #e0e7ff;
+            color: #4f46e5;
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            background: #c7d2fe;
+            transform: translateY(-2px);
+        }
+        .logo-container {
+            background: white;
+            border-radius: 50%;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid #e0e7ff;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+        .order-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .order-details {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .order-details-header {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        .edit-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: fixed;
+                z-index: 100;
+                height: 100vh;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .order-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .order-details-section {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+        .order-details-section:last-child {
+            border-bottom: none;
+        }
+        .order-details-footer {
+            background-color: #f9fafb;
+            border-radius: 0 0 12px 12px;
+        }
+        .edit-form-input {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            width: 100%;
+            transition: border 0.3s;
+        }
+        .edit-form-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        }
+        .edit-form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+        .logo-img {
+            object-fit: cover;
+            border-radius: 50%;
+        }
+    </style>
 </head>
 <body>
-  <h1>Visualização do payload.svg</h1>
-  <img src="payload.svg" alt="SVG" width="300">
-  <h1>Visualização do payload.svg</h1>
-  <img src="payload2.svg" alt="SVG" width="300">
+    <div class="dashboard-grid">
+        <!-- Sidebar -->
+        <aside class="sidebar p-5">
+            <div class="flex items-center mb-10">
+                <!-- Logo personalizada redonda -->
+                <div class="logo-container mr-3 w-14 h-14">
+                    <img src="https://i.etsystatic.com/58181063/c/1200/1200/233/274/isla/04dfe3/78381412/isla_100x100.78381412_qci727mv.jpg" 
+                         alt="Logo Lunatica" 
+                         class="logo-img w-full h-full">
+                </div>
+                <h1 class="text-xl font-bold">Lunatica</h1>
+            </div>
+            
+            <nav class="mb-10">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" class="flex items-center p-3 rounded-lg bg-violet-900 text-white">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 rounded-lg text-gray-300 hover:bg-violet-800 hover:text-white">
+                            <i class="fas fa-shopping-cart mr-3"></i>
+                            Pedidos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 rounded-lg text-gray-300 hover:bg-violet-800 hover:text-white">
+                            <i class="fas fa-users mr-3"></i>
+                            Clientes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 rounded-lg text-gray-300 hover:bg-violet-800 hover:text-white">
+                            <i class="fas fa-box-open mr-3"></i>
+                            Produtos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 rounded-lg text-gray-300 hover:bg-violet-800 hover:text-white">
+                            <i class="fas fa-chart-bar mr-3"></i>
+                            Relatórios
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-auto">
+                <div class="p-4 bg-violet-900 rounded-lg">
+                    <h3 class="font-semibold mb-2">Suporte</h3>
+                    <p class="text-sm text-gray-300 mb-3">Precisa de ajuda? Entre em contato com nosso suporte.</p>
+                    <button class="btn-primary py-2 px-4 rounded-lg text-sm w-full">
+                        <i class="fas fa-headset mr-2"></i> Contatar Suporte
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="p-5 md:p-8">
+            <!-- Mobile Header -->
+            <div class="md:hidden flex justify-between items-center mb-6">
+                <button id="menu-toggle" class="p-2 rounded-lg bg-gray-200">
+                    <i class="fas fa-bars text-gray-700"></i>
+                </button>
+                <div class="flex items-center">
+                    <!-- Logo mobile -->
+                    <div class="logo-container mr-3 w-10 h-10">
+                        <img src="https://i.etsystatic.com/58181063/c/1200/1200/233/274/isla/04dfe3/78381412/isla_100x100.78381412_qci727mv.jpg" 
+                             alt="Logo Lunatica" 
+                             class="logo-img w-full h-full">
+                    </div>
+                    <h1 class="text-xl font-bold">Lunatica</h1>
+                </div>
+                <div class="w-10"></div> <!-- Spacer -->
+            </div>
+            
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Dashboard de Pedidos</h2>
+                    <p class="text-gray-600">Gerencie todos os seus pedidos de impressão 3D</p>
+                </div>
+                <button id="new-order-btn" class="btn-primary mt-4 md:mt-0 py-3 px-6 rounded-lg font-medium flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Novo Pedido
+                </button>
+            </div>
+            
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+                <div class="stat-card bg-white p-5 rounded-xl shadow border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Pedidos</p>
+                            <h3 class="text-2xl font-bold" id="total-orders">0</h3>
+                        </div>
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 12% desde o último mês
+                    </div>
+                </div>
+                
+                <div class="stat-card bg-white p-5 rounded-xl shadow border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 text-sm">Pendentes</p>
+                            <h3 class="text-2xl font-bold" id="pending-orders">0</h3>
+                        </div>
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-red-600">
+                        <i class="fas fa-arrow-down mr-1"></i> 3% desde o último mês
+                    </div>
+                </div>
+                
+                <div class="stat-card bg-white p-5 rounded-xl shadow border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 text-sm">Em Produção</p>
+                            <h3 class="text-2xl font-bold" id="production-orders">0</h3>
+                        </div>
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                            <i class="fas fa-print"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 8% desde o último mês
+                    </div>
+                </div>
+                
+                <div class="stat-card bg-white p-5 rounded-xl shadow border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 text-sm">Receita Total</p>
+                            <h3 class="text-2xl font-bold" id="total-revenue">R$ 0,00</h3>
+                        </div>
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 15% desde o último mês
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters and Search -->
+            <div class="bg-white p-5 rounded-xl shadow mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="w-full md:w-1/3">
+                        <div class="relative">
+                            <input type="text" id="search-orders" placeholder="Buscar pedidos..." class="w-full p-3 pl-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-3">
+                        <select id="status-filter" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                            <option value="all">Todos os Status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                            <option value="impresso">Impresso</option>
+                            <option value="pintado">Pintado</option>
+                            <option value="entregue">Entregue</option>
+                            <option value="concluido">Concluído</option>
+                        </select>
+                        
+                        <select id="date-filter" class="p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                            <option value="all">Todo Período</option>
+                            <option value="today">Hoje</option>
+                            <option value="week">Esta Semana</option>
+                            <option value="month">Este Mês</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders List -->
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Pedidos Recentes</h3>
+                    <p class="text-sm text-gray-600" id="orders-count">Mostrando 0 pedidos</p>
+                </div>
+                
+                <div id="orders-container" class="order-grid">
+                    <!-- Pedidos serão carregados aqui dinamicamente -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para Novo Pedido -->
+    <div id="new-order-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Criar Novo Pedido</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="order-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Cliente</label>
+                            <input type="text" id="client-name" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" placeholder="Nome completo" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Contato</label>
+                            <input type="text" id="client-contact" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" placeholder="Email ou telefone" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Endereço</label>
+                            <input type="text" id="client-address" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" placeholder="Endereço completo">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Data de Entrega</label>
+                            <input type="date" id="delivery-date" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2">Produto/Serviço</label>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-1">
+                                <input type="text" id="product-name" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" placeholder="Nome do produto" required>
+                                <textarea id="product-desc" class="w-full mt-3 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" placeholder="Descrição do produto" rows="2"></textarea>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="relative mb-3">
+                                    <img id="product-preview" src="https://placehold.co/150x150/e2e8f0/334155?text=Imagem" alt="Pré-visualização" class="product-thumbnail">
+                                    <label for="product-image" class="absolute bottom-2 right-2 bg-white p-1 rounded-full shadow cursor-pointer">
+                                        <i class="fas fa-camera text-violet-600"></i>
+                                    </label>
+                                    <input type="file" id="product-image" class="hidden" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Quantidade</label>
+                            <input type="number" id="product-quantity" min="1" value="1" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Preço Unitário (R$)</label>
+                            <input type="number" id="product-price" min="0" step="0.01" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Total (R$)</label>
+                            <input type="text" id="product-total" class="w-full p-3 rounded-lg border border-gray-300 bg-gray-50" readonly value="R$ 0,00">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2">Serviços Adicionais</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center p-3 border border-gray-200 rounded-lg">
+                                <input type="checkbox" id="painting-service" class="h-5 w-5 text-violet-600 rounded">
+                                <label for="painting-service" class="ml-2 text-gray-700">Acabamento/Pintura</label>
+                                <input type="number" id="painting-price" min="0" step="0.01" class="ml-auto w-20 p-2 rounded-lg border border-gray-300" placeholder="R$" disabled>
+                            </div>
+                            <div class="flex items-center p-3 border border-gray-200 rounded-lg">
+                                <input type="checkbox" id="design-service" class="h-5 w-5 text-violet-600 rounded">
+                                <label for="design-service" class="ml-2 text-gray-700">Design Personalizado</label>
+                                <input type="number" id="design-price" min="0" step="0.01" class="ml-auto w-20 p-2 rounded-lg border border-gray-300" placeholder="R$" disabled>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2">Status</label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                                <select id="payment-status" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                                    <option value="pendente">Pagamento Pendente</option>
+                                    <option value="pago">Pagamento Efetuado</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="production-status" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                                    <option value="pendente">Aguardando</option>
+                                    <option value="impresso">Impresso</option>
+                                    <option value="pintado">Pintado</option>
+                                    <option value="entregue">Entregue</option>
+                                    <option value="concluido">Concluído</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2">Observações</label>
+                        <textarea id="order-notes" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-violet-500 focus:border-transparent" rows="3" placeholder="Adicione observações importantes..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="cancel-order" class="py-3 px-6 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary py-3 px-6 rounded-lg font-medium">
+                            <i class="fas fa-save mr-2"></i> Salvar Pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Visualização de Pedido -->
+    <div id="order-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Detalhes do Pedido</h3>
+                <button id="close-details-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="order-details-content" class="order-details">
+                <!-- Conteúdo do pedido será carregado aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Página de Edição de Pedido -->
+    <div id="edit-order-page" class="hidden">
+        <div class="p-8">
+            <div class="mb-6">
+                <button id="back-to-dashboard" class="btn-secondary py-2 px-4 rounded-lg font-medium flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i> Voltar ao Dashboard
+                </button>
+            </div>
+            
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Editar Pedido</h2>
+            
+            <div id="edit-order-container" class="edit-container">
+                <!-- Formulário de edição será carregado aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Armazenamento de dados local
+        const ORDERS_KEY = 'lunatica_orders';
+        const LAST_ORDER_ID_KEY = 'lunatica_last_order_id';
+        
+        // Elementos do DOM
+        const newOrderBtn = document.getElementById('new-order-btn');
+        const newOrderModal = document.getElementById('new-order-modal');
+        const closeModal = document.getElementById('close-modal');
+        const cancelOrder = document.getElementById('cancel-order');
+        const orderForm = document.getElementById('order-form');
+        const ordersContainer = document.getElementById('orders-container');
+        const searchInput = document.getElementById('search-orders');
+        const statusFilter = document.getElementById('status-filter');
+        const dateFilter = document.getElementById('date-filter');
+        const orderDetailsModal = document.getElementById('order-details-modal');
+        const closeDetailsModal = document.getElementById('close-details-modal');
+        const orderDetailsContent = document.getElementById('order-details-content');
+        const editOrderPage = document.getElementById('edit-order-page');
+        const editOrderContainer = document.getElementById('edit-order-container');
+        const backToDashboard = document.getElementById('back-to-dashboard');
+        const mainDashboard = document.querySelector('.dashboard-grid');
+        
+        // Elementos do formulário
+        const productPrice = document.getElementById('product-price');
+        const productQuantity = document.getElementById('product-quantity');
+        const productTotal = document.getElementById('product-total');
+        const paintingService = document.getElementById('painting-service');
+        const paintingPriceInput = document.getElementById('painting-price');
+        const designService = document.getElementById('design-service');
+        const designPriceInput = document.getElementById('design-price');
+        const productImage = document.getElementById('product-image');
+        const productPreview = document.getElementById('product-preview');
+        
+        // Variável para armazenar pedido sendo editado
+        let currentEditingOrder = null;
+        
+        // Funções de formatação
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+        
+        function formatDate(dateString) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('pt-BR', options);
+        }
+        
+        function formatLongDate(dateString) {
+            const options = { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateString).toLocaleDateString('pt-BR', options);
+        }
+        
+        // Obter o próximo ID sequencial para pedidos
+        function getNextOrderId() {
+            let lastId = localStorage.getItem(LAST_ORDER_ID_KEY);
+            if (!lastId) {
+                lastId = 1000; // Começa em 1000 se não existir
+            } else {
+                lastId = parseInt(lastId);
+            }
+            const nextId = lastId + 1;
+            localStorage.setItem(LAST_ORDER_ID_KEY, nextId.toString());
+            return nextId;
+        }
+        
+        // Gerenciamento de pedidos
+        function getOrders() {
+            const orders = localStorage.getItem(ORDERS_KEY);
+            return orders ? JSON.parse(orders) : [];
+        }
+        
+        function saveOrders(orders) {
+            localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+            renderOrders();
+            updateStats();
+        }
+        
+        function addOrder(order) {
+            const orders = getOrders();
+            const newOrder = {
+                id: getNextOrderId(), // Usa ID sequencial
+                date: new Date().toISOString(),
+                ...order
+            };
+            orders.unshift(newOrder);
+            saveOrders(orders);
+        }
+        
+        function updateOrder(orderId, updatedOrder) {
+            const orders = getOrders();
+            const orderIndex = orders.findIndex(order => order.id === orderId);
+            
+            if (orderIndex !== -1) {
+                // Mantém o ID e data originais
+                orders[orderIndex] = {
+                    ...orders[orderIndex],
+                    ...updatedOrder,
+                    id: orders[orderIndex].id,
+                    date: orders[orderIndex].date
+                };
+                saveOrders(orders);
+                return true;
+            }
+            return false;
+        }
+        
+        function deleteOrder(orderId) {
+            if (confirm('Tem certeza que deseja excluir este pedido?')) {
+                const orders = getOrders();
+                const filteredOrders = orders.filter(order => order.id !== orderId);
+                saveOrders(filteredOrders);
+            }
+        }
+        
+        // Renderização de pedidos
+        function renderOrders() {
+            const orders = getOrders();
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusFilterValue = statusFilter.value;
+            const dateFilterValue = dateFilter.value;
+            
+            // Filtragem
+            let filteredOrders = orders;
+            
+            if (searchTerm) {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.clientName.toLowerCase().includes(searchTerm) ||
+                    order.productName.toLowerCase().includes(searchTerm) ||
+                    order.id.toString().includes(searchTerm)
+                );
+            }
+            
+            if (statusFilterValue !== 'all') {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.paymentStatus === statusFilterValue || 
+                    order.productionStatus === statusFilterValue
+                );
+            }
+            
+            if (dateFilterValue !== 'all') {
+                const today = new Date();
+                filteredOrders = filteredOrders.filter(order => {
+                    const orderDate = new Date(order.date);
+                    
+                    if (dateFilterValue === 'today') {
+                        return orderDate.toDateString() === today.toDateString();
+                    } else if (dateFilterValue === 'week') {
+                        const oneWeekAgo = new Date();
+                        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                        return orderDate > oneWeekAgo;
+                    } else if (dateFilterValue === 'month') {
+                        const oneMonthAgo = new Date();
+                        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                        return orderDate > oneMonthAgo;
+                    }
+                    return true;
+                });
+            }
+            
+            // Atualizar contador
+            document.getElementById('orders-count').textContent = 
+                `Mostrando ${filteredOrders.length} de ${orders.length} pedidos`;
+            
+            // Renderização
+            ordersContainer.innerHTML = '';
+            
+            if (filteredOrders.length === 0) {
+                ordersContainer.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-box-open text-gray-300 text-5xl mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-700">Nenhum pedido encontrado</h3>
+                        <p class="text-gray-500 mt-2">Tente ajustar seus filtros de busca</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredOrders.forEach(order => {
+                const orderCard = document.createElement('div');
+                orderCard.className = 'order-card bg-white rounded-xl shadow border border-gray-100 p-5 transition-all duration-300';
+                orderCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-gray-900">${order.productName}</h3>
+                            <p class="text-sm text-gray-600">Pedido #${order.id}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">${formatDate(order.date)}</p>
+                            <p class="font-bold text-lg">${formatCurrency(order.total)}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center mb-4">
+                        <div class="mr-3">
+                            <img src="${order.productImage || 'https://placehold.co/80x80/e2e8f0/334155?text=Imagem'}" alt="Produto" class="product-thumbnail">
+                        </div>
+                        <div>
+                            <p class="font-medium">${order.clientName}</p>
+                            <p class="text-sm text-gray-600">${order.clientContact}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1">Pagamento</p>
+                            <span class="status-badge status-${order.paymentStatus}">${getStatusText(order.paymentStatus, 'payment')}</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1">Produção</p>
+                            <span class="status-badge status-${order.productionStatus}">${getStatusText(order.productionStatus, 'production')}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between mt-4">
+                        <button class="text-violet-600 hover:text-violet-800 text-sm font-medium view-order" data-id="${order.id}">
+                            <i class="fas fa-eye mr-1"></i> Ver detalhes
+                        </button>
+                        <div class="flex gap-2">
+                            <button class="text-red-500 hover:text-red-700 delete-order" data-id="${order.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="text-blue-500 hover:text-blue-700 edit-order" data-id="${order.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                ordersContainer.appendChild(orderCard);
+            });
+            
+            // Adicionar event listeners aos botões
+            document.querySelectorAll('.view-order').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = parseInt(this.getAttribute('data-id'));
+                    viewOrderDetails(orderId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-order').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = parseInt(this.getAttribute('data-id'));
+                    deleteOrder(orderId);
+                });
+            });
+            
+            document.querySelectorAll('.edit-order').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = parseInt(this.getAttribute('data-id'));
+                    openEditPage(orderId);
+                });
+            });
+        }
+        
+        function getStatusText(status, type) {
+            const statusMap = {
+                payment: {
+                    'pendente': 'Pendente',
+                    'pago': 'Pago'
+                },
+                production: {
+                    'pendente': 'Aguardando',
+                    'impresso': 'Impresso',
+                    'pintado': 'Pintado',
+                    'entregue': 'Entregue',
+                    'concluido': 'Concluído'
+                }
+            };
+            
+            return statusMap[type][status] || status;
+        }
+        
+        // Atualizar estatísticas
+        function updateStats() {
+            const orders = getOrders();
+            document.getElementById('total-orders').textContent = orders.length;
+            
+            const pendingOrders = orders.filter(order => 
+                order.paymentStatus === 'pendente' || 
+                order.productionStatus === 'pendente'
+            ).length;
+            document.getElementById('pending-orders').textContent = pendingOrders;
+            
+            const productionOrders = orders.filter(order => 
+                order.productionStatus === 'impresso' || 
+                order.productionStatus === 'pintado'
+            ).length;
+            document.getElementById('production-orders').textContent = productionOrders;
+            
+            const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+            document.getElementById('total-revenue').textContent = formatCurrency(totalRevenue);
+        }
+        
+        // Visualizar detalhes do pedido
+        function viewOrderDetails(orderId) {
+            const orders = getOrders();
+            const order = orders.find(order => order.id === orderId);
+            
+            if (!order) return;
+            
+            orderDetailsContent.innerHTML = `
+                <div class="order-details-header p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="flex items-center">
+                            <div class="logo-container mr-4 w-16 h-16">
+                                <img src="https://i.etsystatic.com/58181063/c/1200/1200/233/274/isla/04dfe3/78381412/isla_100x100.78381412_qci727mv.jpg" 
+                                     alt="Logo Lunatica" 
+                                     class="logo-img w-full h-full">
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-bold">Lunatica Impressões</h1>
+                                <p class="text-violet-100">(11) 91860-8538</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="text-xl font-semibold">Comprovante de Pedido</h2>
+                            <p class="text-sm"><strong>Pedido Nº:</strong> ${order.id}</p>
+                            <p class="text-sm"><strong>Data:</strong> ${formatLongDate(order.date)}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-details-section">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Informações do Cliente</h3>
+                            <div class="text-gray-700">
+                                <p class="mb-2"><strong>Nome:</strong> ${order.clientName}</p>
+                                <p class="mb-2"><strong>Contato:</strong> ${order.clientContact}</p>
+                                <p class="mb-2"><strong>Endereço:</strong> ${order.clientAddress || 'Não informado'}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Status do Pedido</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-gray-600 mb-1">Pagamento</p>
+                                    <span class="status-badge status-${order.paymentStatus}">${getStatusText(order.paymentStatus, 'payment')}</span>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600 mb-1">Produção</p>
+                                    <span class="status-badge status-${order.productionStatus}">${getStatusText(order.productionStatus, 'production')}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-details-section">
+                    <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Itens do Pedido</h3>
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="flex-shrink-0">
+                            <img src="${order.productImage || 'https://placehold.co/200x200/e2e8f0/334155?text=Imagem'}" alt="Produto" class="product-thumbnail w-40 h-40">
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-lg font-semibold">${order.productName}</h4>
+                            <p class="text-gray-600 mb-4">${order.productDesc || 'Sem descrição adicional'}</p>
+                            
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <p class="text-gray-600">Quantidade</p>
+                                    <p class="font-medium">${order.quantity}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">Preço Unitário</p>
+                                    <p class="font-medium">${formatCurrency(order.price)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">Subtotal</p>
+                                    <p class="font-medium">${formatCurrency(order.quantity * order.price)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-details-section">
+                    <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Serviços Adicionais</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-3 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between">
+                                <p class="font-medium">Acabamento/Pintura</p>
+                                <p>${order.paintingPrice ? formatCurrency(order.paintingPrice) : 'Não solicitado'}</p>
+                            </div>
+                        </div>
+                        <div class="p-3 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between">
+                                <p class="font-medium">Design Personalizado</p>
+                                <p>${order.designPrice ? formatCurrency(order.designPrice) : 'Não solicitado'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-details-section">
+                    <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Resumo Financeiro</h3>
+                    <div class="w-full md:w-2/3 ml-auto">
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Subtotal (Produtos):</span>
+                            <span class="font-medium">${formatCurrency(order.quantity * order.price)}</span>
+                        </div>
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Subtotal (Serviços):</span>
+                            <span class="font-medium">${formatCurrency((order.paintingPrice || 0) + (order.designPrice || 0))}</span>
+                        </div>
+                        <div class="flex justify-between py-3 border-t-2 border-gray-800 mt-2">
+                            <span class="text-lg font-bold text-gray-900">Valor Total:</span>
+                            <span class="font-medium text-lg">${formatCurrency(order.total)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-details-section">
+                    <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Observações</h3>
+                    <p class="text-gray-700">${order.notes || 'Nenhuma observação adicional'}</p>
+                </div>
+                
+                <div class="order-details-footer p-6 flex justify-between items-center">
+                    <p class="text-gray-600">Obrigado por comprar conosco! Qualquer dúvida entre em contato.</p>
+                    <div class="flex gap-2">
+                        <button id="download-pdf" class="btn-secondary py-2 px-4 rounded-lg font-medium">
+                            <i class="fas fa-download mr-2"></i> Baixar PDF
+                        </button>
+                        <button id="edit-this-order" class="btn-primary py-2 px-4 rounded-lg font-medium" data-id="${order.id}">
+                            <i class="fas fa-edit mr-2"></i> Editar Pedido
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar event listener ao botão de download PDF
+            document.getElementById('download-pdf').addEventListener('click', function() {
+                generatePDF(orderId);
+            });
+            
+            // Adicionar event listener ao botão de editar
+            document.getElementById('edit-this-order').addEventListener('click', function() {
+                const orderId = parseInt(this.getAttribute('data-id'));
+                orderDetailsModal.classList.add('hidden');
+                openEditPage(orderId);
+            });
+            
+            orderDetailsModal.classList.remove('hidden');
+        }
+        
+        // Gerar PDF do pedido
+        function generatePDF(orderId) {
+            const orders = getOrders();
+            const order = orders.find(order => order.id === orderId);
+            
+            if (!order) return;
+            
+            // Elemento temporário para geração do PDF
+            const element = document.createElement('div');
+            element.innerHTML = orderDetailsContent.innerHTML;
+            
+            // Remover botões da visualização para PDF
+            element.querySelector('#download-pdf').remove();
+            element.querySelector('#edit-this-order').remove();
+            
+            // Opções para o PDF
+            const options = {
+                margin: 10,
+                filename: `pedido-${order.id}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // Gerar PDF
+            html2pdf().set(options).from(element).save();
+        }
+        
+        // Abrir página de edição
+        function openEditPage(orderId) {
+            const orders = getOrders();
+            const order = orders.find(order => order.id === orderId);
+            
+            if (!order) return;
+            
+            currentEditingOrder = order;
+            
+            // Preencher o formulário de edição
+            editOrderContainer.innerHTML = `
+                <form id="edit-order-form">
+                    <input type="hidden" id="edit-order-id" value="${order.id}">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="edit-form-label">Cliente</label>
+                            <input type="text" id="edit-client-name" class="edit-form-input" value="${order.clientName}" required>
+                        </div>
+                        <div>
+                            <label class="edit-form-label">Contato</label>
+                            <input type="text" id="edit-client-contact" class="edit-form-input" value="${order.clientContact}" required>
+                        </div>
+                        <div>
+                            <label class="edit-form-label">Endereço</label>
+                            <input type="text" id="edit-client-address" class="edit-form-input" value="${order.clientAddress || ''}">
+                        </div>
+                        <div>
+                            <label class="edit-form-label">Data de Entrega</label>
+                            <input type="date" id="edit-delivery-date" class="edit-form-input" value="${order.deliveryDate || ''}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="edit-form-label">Produto/Serviço</label>
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="flex-1">
+                                <input type="text" id="edit-product-name" class="edit-form-input mb-4" value="${order.productName}" required>
+                                <textarea id="edit-product-desc" class="edit-form-input h-32" placeholder="Descrição do produto">${order.productDesc || ''}</textarea>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="relative mb-3">
+                                    <img id="edit-product-preview" src="${order.productImage || 'https://placehold.co/200x200/e2e8f0/334155?text=Imagem'}" alt="Produto" class="product-thumbnail w-40 h-40">
+                                    <label for="edit-product-image" class="absolute bottom-2 right-2 bg-white p-1 rounded-full shadow cursor-pointer">
+                                        <i class="fas fa-camera text-violet-600"></i>
+                                    </label>
+                                    <input type="file" id="edit-product-image" class="hidden" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="edit-form-label">Quantidade</label>
+                            <input type="number" id="edit-product-quantity" min="1" class="edit-form-input" value="${order.quantity}">
+                        </div>
+                        <div>
+                            <label class="edit-form-label">Preço Unitário (R$)</label>
+                            <input type="number" id="edit-product-price" min="0" step="0.01" class="edit-form-input" value="${order.price}">
+                        </div>
+                        <div>
+                            <label class="edit-form-label">Total (R$)</label>
+                            <input type="text" id="edit-product-total" class="edit-form-input bg-gray-50" readonly value="${formatCurrency(order.total)}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="edit-form-label">Serviços Adicionais</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center p-3 border border-gray-200 rounded-lg">
+                                <input type="checkbox" id="edit-painting-service" class="h-5 w-5 text-violet-600 rounded" ${order.paintingPrice ? 'checked' : ''}>
+                                <label for="edit-painting-service" class="ml-2 text-gray-700">Acabamento/Pintura</label>
+                                <input type="number" id="edit-painting-price" min="0" step="0.01" class="ml-auto w-20 p-2 rounded-lg border border-gray-300" value="${order.paintingPrice || 0}" ${order.paintingPrice ? '' : 'disabled'}>
+                            </div>
+                            <div class="flex items-center p-3 border border-gray-200 rounded-lg">
+                                <input type="checkbox" id="edit-design-service" class="h-5 w-5 text-violet-600 rounded" ${order.designPrice ? 'checked' : ''}>
+                                <label for="edit-design-service" class="ml-2 text-gray-700">Design Personalizado</label>
+                                <input type="number" id="edit-design-price" min="0" step="0.01" class="ml-auto w-20 p-2 rounded-lg border border-gray-300" value="${order.designPrice || 0}" ${order.designPrice ? '' : 'disabled'}>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="edit-form-label">Status</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="edit-form-label">Pagamento</label>
+                                <select id="edit-payment-status" class="edit-form-input">
+                                    <option value="pendente" ${order.paymentStatus === 'pendente' ? 'selected' : ''}>Pagamento Pendente</option>
+                                    <option value="pago" ${order.paymentStatus === 'pago' ? 'selected' : ''}>Pagamento Efetuado</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="edit-form-label">Produção</label>
+                                <select id="edit-production-status" class="edit-form-input">
+                                    <option value="pendente" ${order.productionStatus === 'pendente' ? 'selected' : ''}>Aguardando</option>
+                                    <option value="impresso" ${order.productionStatus === 'impresso' ? 'selected' : ''}>Impresso</option>
+                                    <option value="pintado" ${order.productionStatus === 'pintado' ? 'selected' : ''}>Pintado</option>
+                                    <option value="entregue" ${order.productionStatus === 'entregue' ? 'selected' : ''}>Entregue</option>
+                                    <option value="concluido" ${order.productionStatus === 'concluido' ? 'selected' : ''}>Concluído</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="edit-form-label">Observações</label>
+                        <textarea id="edit-order-notes" class="edit-form-input h-32">${order.notes || ''}</textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="cancel-edit" class="py-3 px-6 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary py-3 px-6 rounded-lg font-medium">
+                            <i class="fas fa-save mr-2"></i> Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            // Mostrar página de edição e esconder dashboard
+            editOrderPage.classList.remove('hidden');
+            mainDashboard.classList.add('hidden');
+            
+            // Adicionar event listeners aos elementos de edição
+            const editPaintingService = document.getElementById('edit-painting-service');
+            const editPaintingPrice = document.getElementById('edit-painting-price');
+            const editDesignService = document.getElementById('edit-design-service');
+            const editDesignPrice = document.getElementById('edit-design-price');
+            const editProductPrice = document.getElementById('edit-product-price');
+            const editProductQuantity = document.getElementById('edit-product-quantity');
+            
+            // Habilitar/desabilitar preços de serviços
+            editPaintingService.addEventListener('change', function() {
+                editPaintingPrice.disabled = !this.checked;
+                if (!this.checked) editPaintingPrice.value = 0;
+                updateEditTotal();
+            });
+            
+            editDesignService.addEventListener('change', function() {
+                editDesignPrice.disabled = !this.checked;
+                if (!this.checked) editDesignPrice.value = 0;
+                updateEditTotal();
+            });
+            
+            // Atualizar total quando valores mudarem
+            editProductPrice.addEventListener('input', updateEditTotal);
+            editProductQuantity.addEventListener('input', updateEditTotal);
+            editPaintingPrice.addEventListener('input', updateEditTotal);
+            editDesignPrice.addEventListener('input', updateEditTotal);
+            
+            // Preview da imagem do produto
+            document.getElementById('edit-product-image').addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('edit-product-preview').src = e.target.result;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Submeter formulário de edição
+            document.getElementById('edit-order-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Obter valores do formulário
+                const clientName = document.getElementById('edit-client-name').value;
+                const clientContact = document.getElementById('edit-client-contact').value;
+                const clientAddress = document.getElementById('edit-client-address').value;
+                const deliveryDate = document.getElementById('edit-delivery-date').value;
+                const productName = document.getElementById('edit-product-name').value;
+                const productDesc = document.getElementById('edit-product-desc').value;
+                const quantity = parseInt(document.getElementById('edit-product-quantity').value) || 1;
+                const price = parseFloat(document.getElementById('edit-product-price').value) || 0;
+                const paintingPrice = editPaintingService.checked ? 
+                    (parseFloat(document.getElementById('edit-painting-price').value) || 0) : 0;
+                const designPrice = editDesignService.checked ? 
+                    (parseFloat(document.getElementById('edit-design-price').value) || 0) : 0;
+                const paymentStatus = document.getElementById('edit-payment-status').value;
+                const productionStatus = document.getElementById('edit-production-status').value;
+                const notes = document.getElementById('edit-order-notes').value;
+                
+                // Calcular total
+                const subtotal = quantity * price;
+                const total = subtotal + paintingPrice + designPrice;
+                
+                // Obter imagem como base64
+                let productImageBase64 = currentEditingOrder.productImage;
+                const imageInput = document.getElementById('edit-product-image');
+                if (imageInput.files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        productImageBase64 = e.target.result;
+                        saveEditedOrder();
+                    };
+                    reader.readAsDataURL(imageInput.files[0]);
+                } else {
+                    saveEditedOrder();
+                }
+                
+                function saveEditedOrder() {
+                    // Criar objeto de pedido atualizado
+                    const updatedOrder = {
+                        clientName,
+                        clientContact,
+                        clientAddress,
+                        deliveryDate,
+                        productName,
+                        productDesc,
+                        productImage: productImageBase64,
+                        quantity,
+                        price,
+                        paintingPrice,
+                        designPrice,
+                        total,
+                        paymentStatus,
+                        productionStatus,
+                        notes
+                    };
+                    
+                    // Atualizar pedido
+                    updateOrder(currentEditingOrder.id, updatedOrder);
+                    
+                    // Voltar ao dashboard
+                    backToDashboard.click();
+                }
+            });
+            
+            // Botão cancelar edição
+            document.getElementById('cancel-edit').addEventListener('click', function() {
+                backToDashboard.click();
+            });
+        }
+        
+        // Atualizar total na página de edição
+        function updateEditTotal() {
+            const quantity = parseInt(document.getElementById('edit-product-quantity').value) || 1;
+            const price = parseFloat(document.getElementById('edit-product-price').value) || 0;
+            const paintingPrice = document.getElementById('edit-painting-price').disabled ? 
+                0 : (parseFloat(document.getElementById('edit-painting-price').value) || 0);
+            const designPrice = document.getElementById('edit-design-price').disabled ? 
+                0 : (parseFloat(document.getElementById('edit-design-price').value) || 0);
+            
+            const subtotal = quantity * price;
+            const total = subtotal + paintingPrice + designPrice;
+            
+            document.getElementById('edit-product-total').value = formatCurrency(total);
+        }
+        
+        // Event Listeners
+        newOrderBtn.addEventListener('click', () => {
+            newOrderModal.classList.remove('hidden');
+        });
+        
+        closeModal.addEventListener('click', () => {
+            newOrderModal.classList.add('hidden');
+        });
+        
+        cancelOrder.addEventListener('click', () => {
+            newOrderModal.classList.add('hidden');
+        });
+        
+        closeDetailsModal.addEventListener('click', () => {
+            orderDetailsModal.classList.add('hidden');
+        });
+        
+        backToDashboard.addEventListener('click', () => {
+            editOrderPage.classList.add('hidden');
+            mainDashboard.classList.remove('hidden');
+        });
+        
+        orderForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Obter valores do formulário
+            const clientName = document.getElementById('client-name').value;
+            const clientContact = document.getElementById('client-contact').value;
+            const clientAddress = document.getElementById('client-address').value;
+            const deliveryDate = document.getElementById('delivery-date').value;
+            const productName = document.getElementById('product-name').value;
+            const productDesc = document.getElementById('product-desc').value;
+            const quantity = parseInt(document.getElementById('product-quantity').value) || 1;
+            const price = parseFloat(document.getElementById('product-price').value) || 0;
+            const paintingPrice = paintingService.checked ? 
+                (parseFloat(document.getElementById('painting-price').value) || 0) : 0;
+            const designPrice = designService.checked ? 
+                (parseFloat(document.getElementById('design-price').value) || 0) : 0;
+            const paymentStatus = document.getElementById('payment-status').value;
+            const productionStatus = document.getElementById('production-status').value;
+            const notes = document.getElementById('order-notes').value;
+            
+            // Calcular total
+            const subtotal = quantity * price;
+            const total = subtotal + paintingPrice + designPrice;
+            
+            // Obter imagem como base64
+            let productImageBase64 = '';
+            if (productImage.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    productImageBase64 = e.target.result;
+                    saveOrder();
+                };
+                reader.readAsDataURL(productImage.files[0]);
+            } else {
+                saveOrder();
+            }
+            
+            function saveOrder() {
+                // Criar objeto de pedido
+                const newOrder = {
+                    clientName,
+                    clientContact,
+                    clientAddress,
+                    deliveryDate,
+                    productName,
+                    productDesc,
+                    productImage: productImageBase64,
+                    quantity,
+                    price,
+                    paintingPrice,
+                    designPrice,
+                    total,
+                    paymentStatus,
+                    productionStatus,
+                    notes
+                };
+                
+                // Adicionar pedido
+                addOrder(newOrder);
+                
+                // Resetar formulário e fechar modal
+                orderForm.reset();
+                document.getElementById('product-total').value = 'R$ 0,00';
+                newOrderModal.classList.add('hidden');
+                productPreview.src = 'https://placehold.co/150x150/e2e8f0/334155?text=Imagem';
+            }
+        });
+        
+        // Atualizar total do produto
+        function updateProductTotal() {
+            const quantity = parseInt(productQuantity.value) || 1;
+            const price = parseFloat(productPrice.value) || 0;
+            const total = quantity * price;
+            productTotal.value = formatCurrency(total);
+        }
+        
+        productPrice.addEventListener('input', updateProductTotal);
+        productQuantity.addEventListener('input', updateProductTotal);
+        
+        // Habilitar/desabilitar preços de serviços
+        paintingService.addEventListener('change', function() {
+            paintingPriceInput.disabled = !this.checked;
+            if (!this.checked) paintingPriceInput.value = '';
+            updateProductTotal();
+        });
+        
+        designService.addEventListener('change', function() {
+            designPriceInput.disabled = !this.checked;
+            if (!this.checked) designPriceInput.value = '';
+            updateProductTotal();
+        });
+        
+        // Preview da imagem do produto
+        productImage.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    productPreview.src = e.target.result;
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+        
+        // Filtros
+        searchInput.addEventListener('input', renderOrders);
+        statusFilter.addEventListener('change', renderOrders);
+        dateFilter.addEventListener('change', renderOrders);
+        
+        // Menu mobile
+        document.getElementById('menu-toggle')?.addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar o contador de IDs se necessário
+            if (!localStorage.getItem(LAST_ORDER_ID_KEY)) {
+                localStorage.setItem(LAST_ORDER_ID_KEY, '1000');
+            }
+            
+            // Adicionar pedidos de exemplo se não houver pedidos
+            if (getOrders().length === 0) {
+                const exampleOrders = [
+                    {
+                        clientName: 'João Silva',
+                        clientContact: 'joao@email.com',
+                        clientAddress: 'Rua das Impressoras, 123 - São Paulo/SP',
+                        productName: 'Suporte para Celular',
+                        productDesc: 'Material: PLA | Cor: Preto | Acabamento: Fosco',
+                        quantity: 2,
+                        price: 25.00,
+                        paintingPrice: 10.00,
+                        designPrice: 0,
+                        total: 60.00,
+                        paymentStatus: 'pago',
+                        productionStatus: 'impresso',
+                        notes: 'Imprimir em preto fosco. Entregar até sexta-feira.'
+                    },
+                    {
+                        clientName: 'Maria Oliveira',
+                        clientContact: '(11) 99999-8888',
+                        clientAddress: 'Av. das Peças, 456 - Rio de Janeiro/RJ',
+                        productName: 'Estatueta Personalizada',
+                        productDesc: 'Material: Resina | Altura: 20cm | Detalhes: Pintura manual',
+                        quantity: 1,
+                        price: 85.00,
+                        paintingPrice: 25.00,
+                        designPrice: 30.00,
+                        total: 140.00,
+                        paymentStatus: 'pendente',
+                        productionStatus: 'pintado',
+                        notes: 'Enviar foto antes do acabamento final para aprovação do cliente.'
+                    },
+                    {
+                        clientName: 'Carlos Santos',
+                        clientContact: 'carlos@empresa.com',
+                        clientAddress: 'Rua Tecnologia, 789 - Belo Horizonte/MG',
+                        productName: 'Engrenagem Especial',
+                        productDesc: 'Material: PETG | Diâmetro: 8cm | Tolerância: ±0.1mm',
+                        quantity: 5,
+                        price: 12.50,
+                        paintingPrice: 0,
+                        designPrice: 0,
+                        total: 62.50,
+                        paymentStatus: 'pago',
+                        productionStatus: 'entregue',
+                        notes: 'Urgente - para teste mecânico. Entregar antes de quarta-feira.'
+                    }
+                ];
+                
+                exampleOrders.forEach(order => {
+                    addOrder(order);
+                });
+            }
+            
+            renderOrders();
+            updateStats();
+        });
+    </script>
 </body>
 </html>
